@@ -1,267 +1,200 @@
-# Quick Start Guide
+🚀 Vector + Graph Native AI Retrieval Engine
 
-Get up and running with the Vector + Graph Database in 5 minutes!
+A lightweight, model-free hybrid search system built for the Devforge challenge.
 
-## 🚀 Installation (2 minutes)
+🔎 What This Project Is
 
-### Step 1: Install Dependencies
-```bash
+A fully local Vector + Graph native database that supports:
+
+Vector Search (hash-based embeddings, cosine-like similarity)
+
+Graph Search (typed, weighted edges, BFS with depth limit)
+
+Hybrid Search (weighted merge of vector + graph scores)
+
+Full CRUD API for nodes, edges, and embeddings
+
+SQLite persistence and FastAPI server
+
+No external ML models. No FAISS. No cloud dependencies.
+
+🧱 Architecture Overview
+ ┌─────────────────────────┐
+ │       FastAPI API       │  <-- /nodes, /edges, /search/*
+ └─────────────┬───────────┘
+               │
+ ┌─────────────▼────────────┐
+ │     HybridSearchService   │  <-- weighted merge
+ │  final = v_w * vec + g_w * graph
+ └──────────┬───────┬────────┘
+            │       │
+   ┌────────▼──┐ ┌──▼──────────┐
+   │ VectorSvc │ │ GraphSvc     │
+   │ dot-prod  │ │ BFS + weights│
+   └───────────┘ └──────────────┘
+            │       │
+   ┌────────▼───────▼──────────┐
+   │     DatabaseManager        │
+   │  SQLite: nodes/edges/emb   │
+   └────────────────────────────┘
+
+Core Modules
+
+EmbeddingService – 256-dim hash-based embedding (deterministic)
+
+VectorSearchService – full-scan vector similarity
+
+GraphService – BFS traversal + hop/weight scoring
+
+HybridSearchService – combines both signals
+
+DatabaseManager – persistent store for nodes, embeddings, edges
+
+⚡ Features
+✔ Hash-based Embeddings
+
+No ML models. Fast, deterministic, fully local.
+
+✔ Weighted Graph Traversal
+
+Supports:
+
+Directed edges
+
+Typed relationships
+
+Weighted paths
+
+Depth-limited BFS
+
+✔ Hybrid Retrieval
+final_score = vector_weight * vector_score
+             + graph_weight  * graph_score
+
+✔ CRUD for Nodes & Edges
+
+Including embedding regeneration and cascading deletes.
+
+✔ Full Automated Test Suite
+
+Run all tests with:
+
+python3 test_final.py
+
+
+Covers API, CRUD, vector search, graph traversal, and hybrid correctness.
+
+🛠 Installation
+git clone <repo-url>
+cd <repo>
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-```
 
-This installs:
-- FastAPI, Streamlit (web frameworks)
-- sentence-transformers (embeddings)
-- faiss-cpu (vector search)
-- rank-bm25 (keyword search)
-- SQLite (built into Python)
+Start the Server
+uvicorn app:app --reload --host 127.0.0.1 --port 8000
 
-### Step 2: Start the System
 
-**Option A - Linux/Mac:**
-```bash
-chmod +x start.sh
-./start.sh
-```
+Visit the interactive API docs at:
 
-**Option B - Windows:**
-```bash
-start.bat
-```
+👉 http://127.0.0.1:8000/docs
 
-**Option C - Manual:**
-```bash
-# Terminal 1: Start backend
-python app.py
+🔧 Example Usage
+Create a Node
+POST /nodes
+{
+  "text": "Deep learning overview",
+  "metadata": { "type": "note" }
+}
 
-# Terminal 2: Start UI  
-streamlit run streamlit_app.py
-```
+Create an Edge
+POST /edges
+{
+  "source": "node-A",
+  "target": "node-B",
+  "type": "cites",
+  "weight": 1.0
+}
 
-### Step 3: Open Your Browser
-- UI: http://localhost:8501
-- API: http://localhost:8000
-- Docs: http://localhost:8000/docs
+Vector Search
+POST /search/vector
+{
+  "query_text": "deep learning",
+  "top_k": 5
+}
 
-## 📝 First Steps (3 minutes)
+Graph Search
+GET /search/graph?start_id=node-A&depth=2&type=cites
 
-### 1. Load Sample Data
-1. Go to the "📊 Upload Data" tab
-2. Click "🚀 Load Sample Knowledge Graph"
-3. Wait 10 seconds for data creation
+Hybrid Search
+POST /search/hybrid
+{
+  "query_text": "deep learning",
+  "vector_weight": 0.7,
+  "graph_weight": 0.3,
+  "graph_start_id": "node-A",
+  "graph_depth": 2,
+  "top_k": 10
+}
 
-This creates a knowledge graph about AI, databases, and programming with 8 nodes and 11 relationships.
+🧪 Test Suite
 
-### 2. Try Vector Search
-1. Go to "🔍 Vector Search" tab
-2. Search for: `"machine learning and neural networks"`
-3. See semantically similar results ranked by relevance
+test_final.py validates:
 
-### 3. Try Graph Search
-1. Go to "🕸️ Graph Search" tab
-2. Copy any node ID from previous search
-3. Set depth to 2
-4. See connected nodes through relationships
+API & CRUD
 
-### 4. Try Hybrid Search ⭐
-1. Go to "⚡ Hybrid Search" tab
-2. Search for: `"artificial intelligence systems"`
-3. Set Vector+Keyword weight: 0.7
-4. Set Graph weight: 0.3
-5. Optionally paste a start node ID
-6. See how RRF combines all methods!
+Node create/read/update/delete
 
-## 🎯 Understanding the Results
+Edge lifecycle & cascade deletion
 
-### Vector Search
-```
-Query: "machine learning"
-Result #1 [Score: 0.87]
-  "Machine learning enables computers to learn..."
-```
-- High score = semantically similar
-- Finds meaning, not just keywords
+Vector Search
 
-### Graph Search
-```
-Start: node-1234
-Distance 1: "Deep learning uses neural networks..."
-Distance 2: "Natural language processing enables..."
-```
-- Distance = number of edges away
-- Discovers related concepts
+Cosine similarity ordering
 
-### Hybrid Search (Best!)
-```
-Result #1 [Final: 0.92 | Vector: 0.85 | Graph: 0.75]
-  "Machine learning is a subset of AI..."
-```
-- **Final Score**: Weighted combination via RRF
-- **Vector Score**: Semantic + keyword (RRF-fused)
-- **Graph Score**: Relationship proximity
-- Best of all worlds!
+top_k > dataset size
 
-## 🔧 API Examples
+Metadata filtering
 
-### Create a Node
-```bash
-curl -X POST http://localhost:8000/nodes \
-  -H "Content-Type: application/json" \
-  -d '{
-    "text": "Transformers revolutionized NLP",
-    "metadata": {"topic": "AI"},
-    "auto_embed": true
-  }'
-```
+Graph Traversal
 
-### Create an Edge
-```bash
-curl -X POST http://localhost:8000/edges \
-  -H "Content-Type: application/json" \
-  -d '{
-    "source": "node-1234.56",
-    "target": "node-7890.12",
-    "type": "related_to",
-    "weight": 1.0
-  }'
-```
+BFS depth limiting
 
-### Search
-```bash
-# Vector search
-curl -X POST http://localhost:8000/search/vector \
-  -H "Content-Type: application/json" \
-  -d '{"query_text": "AI and ML", "top_k": 5}'
+Typed relationship filtering
 
-# Hybrid search
-curl -X POST http://localhost:8000/search/hybrid \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query_text": "AI systems",
-    "vector_weight": 0.7,
-    "graph_weight": 0.3,
-    "top_k": 10
-  }'
-```
+Cycle handling
 
-## 🎬 Run the Demo Script
+Hybrid Search
 
-For a guided walkthrough:
-```bash
-python demo.py
-```
+Weighted merge correctness
 
-This creates a complete knowledge graph and demonstrates:
-- Vector search
-- Graph traversal  
-- Hybrid search with RRF
-- Comparison of all methods
+Vector-only vs graph-only extremes
 
-## 💡 Tips
+Run everything:
 
-### Best Practices
+python3 test_final.py
 
-1. **Always use hybrid search** for best results
-   - Vector+Keyword weight: 0.6-0.8 for semantic queries
-   - Graph weight: 0.2-0.4 for relationship context
+📌 Notes
 
-2. **Create rich graphs** for better graph search
-   - Add meaningful edge types
-   - Connect related concepts
-   - Build hierarchies
+Embeddings are not semantic; they are deterministic hashed vectors.
 
-3. **Use metadata** for filtering (future feature)
-   - Categories, tags, timestamps
-   - Domain-specific attributes
+Vector search is full-scan (simple & transparent).
 
-### Weight Tuning
+Graph scoring is deterministic and interpretable.
 
-| Query Type | Vector+Keyword | Graph | Reason |
-|------------|----------------|-------|--------|
-| Semantic questions | 0.8-0.9 | 0.1-0.2 | Prioritize meaning |
-| Known relationships | 0.3-0.4 | 0.6-0.7 | Prioritize structure |
-| Balanced discovery | 0.5-0.6 | 0.4-0.5 | Equal importance |
+Hybrid search is intentionally simple for clarity and reproducibility.
 
-### Common Issues
+🎯 Summary
 
-**"Cannot connect to backend"**
-- Make sure `python app.py` is running
-- Check port 8000 is not in use
+This repository implements a complete vector + graph native retrieval engine with:
 
-**"No results found"**
-- Load sample data first
-- Check your query spelling
-- Try broader search terms
+Deterministic local embeddings
 
-**"Import errors"**
-- Run `pip install -r requirements.txt`
-- Make sure Python 3.8+
+Weighted BFS graph scoring
 
-## 🏆 Demo Storyline for Judges
+Hybrid ranking
 
-### 1. Introduction (30 seconds)
-"We built a Vector + Graph hybrid database that uses Reciprocal Rank Fusion to combine semantic search, keyword matching, and graph relationships for superior retrieval."
+Full CRUD API
 
-### 2. Show Vector Search (1 minute)
-- Query: "machine learning algorithms"
-- Show semantic matches without exact keywords
-- Point out: "Finds *meaning*, not just words"
+Automated evaluation script
 
-### 3. Show Graph Search (1 minute)
-- Start from ML node
-- Show connected concepts at depth 2
-- Point out: "Discovers relationships and context"
-
-### 4. Show Hybrid Search ⭐ (2 minutes)
-- Same query: "machine learning algorithms"
-- Adjust weights in real-time
-- Show score breakdown
-- Point out: "RRF combines both methods optimally"
-
-### 5. Compare Results (1 minute)
-- Side-by-side: Vector vs Graph vs Hybrid
-- Highlight how hybrid catches what others miss
-- Show the final score formula
-
-### 6. Technical Deep-Dive (1 minute)
-- Open `/docs` endpoint
-- Show architecture diagram
-- Mention: RRF (industry standard), FAISS, BM25, sentence-transformers
-
-### 7. Closing (30 seconds)
-"Our system combines the best of vector, keyword, and graph search using proven algorithms. It's fast, accurate, and ready for real-world use."
-
-## 📚 Next Steps
-
-1. **Explore the code**: `app.py` is well-documented
-2. **Read architecture**: `ARCHITECTURE.md` explains everything
-3. **Try your own data**: Upload JSON via the UI
-4. **Experiment with weights**: Find optimal settings for your use case
-5. **Check API docs**: http://localhost:8000/docs for interactive testing
-
-## 🎓 Learn More
-
-- **RRF Algorithm**: See `ARCHITECTURE.md` section on Reciprocal Rank Fusion
-- **Best Practices**: Check the `README.md` for detailed usage
-- **API Reference**: Interactive docs at `/docs` endpoint
-
-## ❓ FAQ
-
-**Q: Why is it called "hybrid"?**  
-A: Combines 3 methods: vector similarity, keyword matching (BM25), and graph traversal.
-
-**Q: What is RRF?**  
-A: Reciprocal Rank Fusion - an algorithm that intelligently merges rankings from multiple search methods. Used by Azure, Weaviate, Pinecone.
-
-**Q: Why not use OpenAI embeddings?**  
-A: We use local embeddings (sentence-transformers) to ensure the system runs entirely offline with no API costs.
-
-**Q: Can it scale?**  
-A: Current setup handles 10K nodes easily. For larger scales, upgrade to HNSW index and PostgreSQL (see `ARCHITECTURE.md`).
-
-**Q: How accurate is it?**  
-A: The combination of semantic, keyword, and graph methods via RRF typically outperforms single-method approaches by 15-30% (see industry benchmarks).
-
----
-
-**Ready to impress the judges?** You now have a production-ready hybrid retrieval system! 🚀
+Fast, local, interpretable — and tailor-made for the Devforge challenge.
